@@ -54,6 +54,9 @@ function create() {
   // ball (graphics)
   spawnBall.call(this);
 
+  // add paddle-ball collider (ensure it exists and will respect isBallLaunched)
+  // collider already added later referencing this.ball; keep as-is but hitPaddle will ignore when not launched
+
   // visible walls
   const wallThickness = 10;
   const leftWall = this.add.rectangle(wallThickness/2, HEIGHT/2, wallThickness, HEIGHT, 0x444444);
@@ -96,7 +99,13 @@ function create() {
     // if ball not launched, move ball with paddle
     if (!this.isBallLaunched && this.ball) {
       this.ball.x = this.targetPaddleX;
-      this.ball.body.x = this.ball.x - (this.ball.displayWidth||12)/2;
+      if (this.ball.body) {
+        // update body transform even if disabled
+        if (this.ball.body.position) {
+          this.ball.body.position.x = this.ball.x - (this.ball.displayWidth||12)/2;
+          this.ball.body.prev.x = this.ball.body.position.x;
+        }
+      }
     }
   });
   this.input.on('pointerdown', () => {
@@ -158,13 +167,20 @@ function spawnBall() {
   // start attached to paddle
   this.isBallLaunched = false;
   this.ball.body.setVelocity(0,0);
+  // disable physics body while attached to paddle to avoid sticky collisions
+  if (this.ball.body) this.ball.body.enable = false;
   this.ball.x = this.paddle.x;
-  this.ball.body.x = this.ball.x - radius/2;
+  if (this.ball.body) this.ball.body.x = this.ball.x - radius/2;
 }
 
 function launchBall() {
   if (!this.ball) return;
   this.isBallLaunched = true;
+  // enable physics body and reset position
+  if (this.ball.body) {
+    this.ball.body.enable = true;
+    this.ball.body.reset(this.ball.x, this.ball.y);
+  }
   // give a slight upward randomized angle
   const vx = Phaser.Math.Between(-120,120);
   const vy = -220;
@@ -250,8 +266,12 @@ function collectPowerup(paddle, pu) {
 }
 
 function hitPaddle(ball, paddle) {
+  // only affect ball when it's in flight
+  if (!this.isBallLaunched) return;
   const diff = ball.x - paddle.x;
   ball.body.setVelocityX(200 * (diff/50));
+  // ensure a clear upward bounce
+  ball.body.setVelocityY(Math.min(-180, ball.body.velocity.y - 120));
   this.sfx.playBeep(900, 'sine', 0.03, 0.04);
 }
 
