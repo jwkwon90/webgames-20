@@ -2,8 +2,9 @@ const puppeteer = require('puppeteer');
 const http = require('http');
 const serveHandler = require('serve-handler');
 
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
 (async () => {
-  // simple static server
   const server = http.createServer((req, res) => serveHandler(req, res, { public: '.' }));
   server.listen(5000);
   const base = 'http://127.0.0.1:5000/games/01-brick-breaker/index.html';
@@ -21,40 +22,73 @@ const serveHandler = require('serve-handler');
   try {
     await page.goto(base, { waitUntil: 'networkidle2' });
 
-    // ensure paddle exists
-    const paddle = await page.$eval('body', () => true);
+    // wait for game to initialize
+    await sleep(500);
 
-    // try launch sequence: click to launch
+    // ensure ball exists and is attached
+    let ballYbefore = await page.evaluate(() => {
+      const g = window.game; if(!g) return null;
+      const s = g.scene.scenes[0]; if(!s) return null;
+      return s.ball ? s.ball.y : null;
+    });
+
+    // try launch with click and space
     await page.mouse.click(100, 520);
     await page.keyboard.press('Space');
-    await page.waitForTimeout(500);
+    await sleep(600);
 
-    // capture ball y before and after
-    const ballYbefore = await page.evaluate(() => {
-      const c = document.querySelector('canvas');
-      const game = window.game; // Phaser exposes game globally in this build
-      try {
-        return game.scene.scenes[0].ball ? game.scene.scenes[0].ball.y : null;
-      } catch(e){ return null; }
+    let ballYafter = await page.evaluate(() => {
+      const g = window.game; if(!g) return null;
+      const s = g.scene.scenes[0]; if(!s) return null;
+      return s.ball ? s.ball.y : null;
     });
 
-    await page.waitForTimeout(600);
+    // check ball moved up
+    const launchOk = (ballYbefore !== null && ballYafter !== null && ballYafter < ballYbefore);
 
-    const ballYafter = await page.evaluate(() => {
-      const game = window.game;
-      try { return game.scene.scenes[0].ball ? game.scene.scenes[0].ball.y : null; } catch(e){ return null; }
+    // Wait a bit and check a brick was hit (remainingBricks decreased)
+    const remainingBefore = await page.evaluate(() => {
+      const g = window.game; if(!g) return null; const s = g.scene.scenes[0]; if(!s) return null; return s.remainingBricks;
     });
 
-    console.log('ballYbefore', ballYbefore, 'ballYafter', ballYafter);
+    // wait up to 4s for brick to change
+    let remainingAfter = remainingBefore;
+    for(let i=0;i<8;i++){
+      await sleep(500);
+      remainingAfter = await page.evaluate(() => {
+        const g = window.game; if(!g) return null; const s = g.scene.scenes[0]; if(!s) return null; return s.remainingBricks;
+      });
+      if(remainingAfter < remainingBefore) break;
+    }
 
+    const brickHit = (remainingBefore !== null && remainingAfter !== null && remainingAfter < remainingBefore);
+
+    // simulate ball fall to test lives decrement: set ball velocity downwards and wait
+    await page.evaluate(() => {
+      const g = window.game; if(!g) return; const s = g.scene.scenes[0]; if(!s || !s.ball) return; s.ball.body.setVelocity(0, 800);
+    });
+    await sleep(1000);
+    const livesAfter = await page.evaluate(() => {
+      const g = window.game; if(!g) return null; const s = g.scene.scenes[0]; if(!s) return null; return s.lives;
+    });
+
+    const livesDecreased = (livesAfter !== null && livesAfter < 3);
+
+    // report
     if (errors.length) {
       console.error('Console errors detected:', errors.join('\n'));
       process.exitCode = 2;
-    } else if (!ballYbefore || !ballYafter || ballYafter >= ballYbefore) {
+    } else if (!launchOk) {
       console.error('Ball did not launch upwards as expected');
       process.exitCode = 3;
+    } else if (!brickHit) {
+      console.error('No brick hit detected within wait interval');
+      process.exitCode = 4;
+    } else if (!livesDecreased) {
+      console.error('Lives did not decrease after forcing ball fall');
+      process.exitCode = 5;
     } else {
-      console.log('Smoke test passed: ball launched upwards');
+      console.log('Smoke test passed: launch, brick hit, lives decrease OK');
     }
   } catch (e) {
     console.error('Smoke test exception', e);

@@ -18,6 +18,24 @@ jobs:
       - name: Install
         run: npm ci
       - name: Run smoke tests
-        run: npm run test:smoke
-        env:
-          CI: true
+        id: smoke
+        run: |
+          set -o pipefail
+          npm run test:smoke 2>&1 | tee smoke.log || echo "SMOKE_FAILED"
+      - name: Upload smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-log
+          path: smoke.log
+      - name: Create GitHub issue on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const log = fs.readFileSync('smoke.log', 'utf8');
+            const title = `Smoke tests failed for ${process.env.GITHUB_REPOSITORY}@${process.env.GITHUB_SHA.slice(0,7)}`;
+            const body = `Smoke tests failed.\n\n**Run:** ${process.env.GITHUB_RUN_NUMBER}\n**Ref:** ${process.env.GITHUB_REF}\n\n<details><summary>smoke.log</summary>\n\n\n\`\`\`\n${log}\n\`\`\`\n\n</details>`;
+            await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body });
