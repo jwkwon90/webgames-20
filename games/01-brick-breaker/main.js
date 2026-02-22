@@ -110,12 +110,12 @@ function create() {
   });
   this.input.on('pointerdown', () => {
     // launch ball if not launched
-    if (!this.isBallLaunched) this.launchBall();
+    if (!this.isBallLaunched) launchBall.call(this);
   });
 
   // keyboard
   this.input.keyboard.on('keydown-R', () => { this.scene.restart(); });
-  this.input.keyboard.on('keydown-SPACE', () => { if (!this.isBallLaunched) this.launchBall(); });
+  this.input.keyboard.on('keydown-SPACE', () => { if (!this.isBallLaunched) launchBall.call(this); });
 
   // UI
   this.scoreText = this.add.text(10, HEIGHT-28, 'Score: 0', {font:'16px Arial', fill:'#fff'});
