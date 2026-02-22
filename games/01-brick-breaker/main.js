@@ -145,8 +145,13 @@ function update() {
 // --- helpers ---
 function spawnBall() {
   if (this.ball) this.ball.destroy();
-  this.ball = this.add.circle(WIDTH/2, HEIGHT - 50, 12, 0xc83232);
+  const radius = 12;
+  this.ball = this.add.circle(this.paddle.x, this.paddle.y - this.paddle.height/2 - radius - 2, radius, 0xc83232);
   this.physics.add.existing(this.ball);
+  // ensure arcade body behaves as expected
+  this.ball.body.setCircle = this.ball.body.setCircle || function(){};
+  // disable gravity on ball
+  if (this.ball.body.hasOwnProperty('allowGravity')) this.ball.body.allowGravity = false;
   this.ball.body.setBounce(1,1);
   this.ball.body.setCollideWorldBounds(true);
   this.ball.body.onWorldBounds = true;
@@ -154,7 +159,7 @@ function spawnBall() {
   this.isBallLaunched = false;
   this.ball.body.setVelocity(0,0);
   this.ball.x = this.paddle.x;
-  this.ball.body.x = this.ball.x - 12/2;
+  this.ball.body.x = this.ball.x - radius/2;
 }
 
 function launchBall() {
@@ -162,8 +167,10 @@ function launchBall() {
   this.isBallLaunched = true;
   // give a slight upward randomized angle
   const vx = Phaser.Math.Between(-120,120);
-  const vy = -200;
+  const vy = -220;
   this.ball.body.setVelocity(vx, vy);
+  // ensure upward velocity
+  if (this.ball.body.velocity.y > -50) this.ball.body.setVelocityY(vy);
   this.sfx.playBeep(800, 'sine', 0.05, 0.06);
 }
 
