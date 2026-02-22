@@ -1,0 +1,13 @@
+{
+  "name": "webgames-20",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "npx serve -s . -l 5000",
+    "test:smoke": "node tests/run-smoke.js"
+  },
+  "devDependencies": {
+    "puppeteer": "^19.11.1",
+    "serve": "^14.2.0"
+  }
+}
