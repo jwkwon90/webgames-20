@@ -52,7 +52,7 @@ function create() {
   this.paddle.body.setCollideWorldBounds(true);
 
   // ball (graphics)
-  this.spawnBall();
+  spawnBall.call(this);
 
   // visible walls
   const wallThickness = 10;
