@@ -4,10 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>01 - Brick Breaker</title>
-    <style>body{margin:0;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}#game{width:100vw;height:100vh;display:block}</style>
+    <style>body{margin:0;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}#game{width:100vw;height:100vh;display:block}#ui{position:fixed;left:12px;top:12px;z-index:10}</style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
   </head>
   <body>
+    <div id="ui">
+      <div style="background:rgba(0,0,0,0.6);padding:8px;border-radius:6px">
+        <strong>01 - Brick Breaker</strong><br>
+        Controls: Move mouse / touch to move paddle • ← → keys to move • Refresh to restart
+n    </div>
+    </div>
     <div id="game"></div>
     <script src="main.js"></script>
   </body>
