@@ -17,44 +17,48 @@ const config = {
 const game = new Phaser.Game(config);
 
 function preload() {
-  this.load.image('paddle', 'assets/paddle.png');
-  this.load.image('ball', 'assets/ball.png');
-  this.load.image('brick', 'assets/brick.png');
+  // no external assets required; we'll draw simple shapes instead
 }
 
 function create() {
   this.score = 0;
   this.isGameOver = false;
 
-  // paddle
-  this.paddle = this.physics.add.sprite(WIDTH/2, HEIGHT - 30, 'paddle').setImmovable();
+  // paddle (graphics)
+  this.paddle = this.add.rectangle(WIDTH/2, HEIGHT - 30, 120, 24, 0x3232c8);
+  this.physics.add.existing(this.paddle, false);
+  this.paddle.body.setImmovable(true);
   this.paddle.body.allowGravity = false;
-  this.paddle.setCollideWorldBounds(true);
+  this.paddle.body.setCollideWorldBounds(true);
 
-  // ball
-  this.ball = this.physics.add.sprite(WIDTH/2, HEIGHT - 50, 'ball');
-  this.ball.setCollideWorldBounds(true);
-  this.ball.setBounce(1);
-  this.ball.setVelocity(150, -150);
+  // ball (graphics)
+  this.ball = this.add.circle(WIDTH/2, HEIGHT - 50, 12, 0xc83232);
+  this.physics.add.existing(this.ball);
+  this.ball.body.setBounce(1,1);
+  this.ball.body.setCollideWorldBounds(true);
+  this.ball.body.setVelocity(150, -150);
 
-  // bricks
+  // bricks (static group of rectangles)
   this.bricks = this.physics.add.staticGroup();
   const cols = 8; const rows = 5; const brickW = 64; const brickH = 24; const offsetX = (WIDTH - cols*brickW)/2 + brickW/2;
   for (let r=0;r<rows;r++){
     for (let c=0;c<cols;c++){
       const x = offsetX + c*brickW;
       const y = 60 + r*(brickH+6);
-      this.bricks.create(x,y,'brick');
+      const brick = this.add.rectangle(x,y,brickW,brickH,0x3cc850);
+      this.bricks.add(brick);
     }
   }
 
-  // collisions
+  // enable collisions (ball with bricks/paddle)
   this.physics.add.collider(this.ball, this.bricks, hitBrick, null, this);
   this.physics.add.collider(this.ball, this.paddle, hitPaddle, null, this);
 
   // input
   this.input.on('pointermove', pointer => {
-    this.paddle.x = Phaser.Math.Clamp(pointer.x, 50, WIDTH-50);
+    const nx = Phaser.Math.Clamp(pointer.x, 60, WIDTH-60);
+    this.paddle.x = nx;
+    this.paddle.body.x = nx - this.paddle.width/2;
   });
 
   // score text
@@ -74,28 +78,35 @@ function update() {
   if (this.isGameOver) return;
   // keyboard control for desktop
   const cursors = this.input.keyboard.createCursorKeys();
-  if (cursors.left.isDown) this.paddle.x -= 6;
-  if (cursors.right.isDown) this.paddle.x += 6;
+  if (cursors.left.isDown) {
+    this.paddle.x -= 6;
+    this.paddle.body.x = this.paddle.x - this.paddle.width/2;
+  }
+  if (cursors.right.isDown) {
+    this.paddle.x += 6;
+    this.paddle.body.x = this.paddle.x - this.paddle.width/2;
+  }
 }
 
 function hitBrick(ball, brick) {
-  brick.disableBody(true,true);
+  // brick is a GameObject; remove it
+  brick.destroy();
   this.score += 10;
   this.scoreText.setText('Score: ' + this.score);
-  if (this.bricks.countActive() === 0) {
+  if (this.bricks.countActive(true) === 0) {
     this.add.text(WIDTH/2-60, HEIGHT/2, 'YOU WIN', {font:'32px Arial', fill:'#0f0'});
     this.isGameOver = true;
-    this.ball.setVelocity(0,0);
+    this.ball.body.setVelocity(0,0);
   }
 }
 
 function hitPaddle(ball, paddle) {
   const diff = ball.x - paddle.x;
-  ball.setVelocityX(200 * (diff/50));
+  ball.body.setVelocityX(200 * (diff/50));
 }
 
 function gameOver() {
   this.isGameOver = true;
   this.add.text(WIDTH/2-70, HEIGHT/2, 'GAME OVER', {font:'32px Arial', fill:'#f00'});
-  this.ball.disableBody(true,true);
+  this.ball.destroy();
 }
