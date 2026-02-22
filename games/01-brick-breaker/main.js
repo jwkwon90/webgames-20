@@ -25,7 +25,7 @@ function create() {
   this.score = 0;
   this.lives = 3;
   this.isGameOver = false;
-  this.isBallLaunched = true; // start launched
+  this.isBallLaunched = false; // start unlaunched (attached to paddle)
 
   // audio helper using WebAudio Oscillator for simple effects
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
