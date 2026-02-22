@@ -76,7 +76,6 @@ function create() {
       const brick = this.add.rectangle(x,y,brickW,brickH,color);
       brick.hp = hp;
       this.physics.add.existing(brick, true);
-      brick.body.setImmovable(true);
       this.bricks.add(brick);
     }
   }
